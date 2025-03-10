@@ -68,3 +68,6 @@ if __name__ == '__main__':
                 output_file=output, 
                 instance=ins,
             )
+            if input.suffix != ".xml":
+                ## 修改为xml后缀
+                os.rename(input, f"{input}.xml")
