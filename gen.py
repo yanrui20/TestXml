@@ -3,6 +3,26 @@ from copy import deepcopy
 import os
 from pathlib import Path
 
+def get_new_tb(tb, tb_index, tb_start_index, chan, o_chunks):
+    new_tb = deepcopy(tb)
+    # 修改chan
+    new_tb.set('chan', str(chan)) # 合并的这一份chan都是1
+    # 修改id
+    new_tb.set('id', str(tb_index))
+    # 修改steps
+    for step in new_tb.findall('step'):
+        # 修改srcoff和dstoff
+        for attr in ['srcoff', 'dstoff']:
+            srcbuf = step.get("srcbuf")
+            if srcbuf == 'o':
+                value = int(step.get(attr))
+                step.set(attr, str(value + o_chunks * chan))
+        # 修改depid
+        depid = int(step.get("depid"))
+        if depid >= 0:
+            step.set("depid", str(depid + tb_start_index))
+    return new_tb
+
 def modify_xml(input_file, output_file, instance):
     # 读取XML文件
     tree = ET.parse(input_file)
@@ -21,23 +41,10 @@ def modify_xml(input_file, output_file, instance):
         original_tbs = gpu.findall('tb')
         tb_index = len(original_tbs)
         for chan in range(1, instance):
+            tb_start_index = tb_index
             for tb in original_tbs:
-                # 深度拷贝tb元素
-                new_tb = deepcopy(tb)
-                
-                # 修改chan
-                new_tb.set('chan', str(chan))
-                new_tb.set('id', str(tb_index))
+                new_tb = get_new_tb(tb, tb_index, tb_start_index, chan, o_chunks)
                 tb_index += 1
-                
-                # 修改srcoff和dstoff
-                for step in new_tb.findall('step'):
-                    for attr in ['srcoff', 'dstoff']:
-                        srcbuf = step.get("srcbuf")
-                        if srcbuf == 'o':
-                            value = int(step.get(attr))
-                            step.set(attr, str(value + o_chunks * chan))
-                        
                 # 添加到当前GPU节点
                 gpu.append(new_tb)
 
@@ -68,6 +75,3 @@ if __name__ == '__main__':
                 output_file=output, 
                 instance=ins,
             )
-            if input.suffix != ".xml":
-                ## 修改为xml后缀
-                os.rename(input, f"{input}.xml")
