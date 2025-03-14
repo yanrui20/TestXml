@@ -158,7 +158,7 @@ def multi_pipeline(input_file, output_file, pipeline, ppfunc):
 def is_first_head_mesh_8_4(gpu_id, tb_xml):
     send = int(tb_xml.get('send'))
     recv = int(tb_xml.get('recv'))
-    if recv == -1 and send > 0 and (send // 8) != (gpu_id // 8): # send不在同一个8卡中
+    if recv == -1 and send >= 0 and (send // 8) != (gpu_id // 8): # send不在同一个8卡中
         return True
     return False
 
@@ -166,7 +166,7 @@ def is_first_head_mesh_8_4(gpu_id, tb_xml):
 def is_first_tail_mesh_8_4(gpu_id, tb_xml):
     send = int(tb_xml.get('send'))
     recv = int(tb_xml.get('recv'))
-    if send == -1 and recv > 0 and (recv // 8) != (gpu_id // 8): # recv不在同一个8卡中
+    if send == -1 and recv >= 0 and (recv // 8) != (gpu_id // 8): # recv不在同一个8卡中
         return True
     return False
 
