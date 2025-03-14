@@ -88,7 +88,7 @@ def how_many_steps_need_append(gpu):
     return num_append_steps
 
 # 4. 复制stages
-def get_new_pipeline_tb(tb: _tb, tb_index, tb_start_index, last_tb_start_index, o_chunks, pp_index, tail_steps, num_append_steps):
+def get_new_pipeline_tb(tb: _tb, tb_index, tb_start_index, last_tb_start_index, o_chunks, pp_index, is_last_pp, tail_steps, num_append_steps):
     new_tb = deepcopy(tb.xml_node)
     # 修改id
     new_tb.set('id', str(tb_index))
@@ -101,15 +101,21 @@ def get_new_pipeline_tb(tb: _tb, tb_index, tb_start_index, last_tb_start_index, 
                 value = int(step.get(attr))
                 step.set(attr, str(value + o_chunks * pp_index))
     # 修改step依赖
-    # 修改depid and deps，这里是依赖于当前stage，pp_index至少是1，依赖的deps已经发生了变化
+    # 修改depid and deps
     for step in new_tb.findall('step'):
         depid = int(step.get("depid"))
         deps = int(step.get("deps"))
         if depid >= 0:
-            step.set("deps", str(deps + num_append_steps[depid]))
+            if pp_index != 0: # 这里是依赖于当前stage, pp_index不为0的时候, 依赖的deps已经发生了变化
+                deps += num_append_steps[depid]
+            step.set("deps", str(deps))
             step.set("depid", str(depid + tb_start_index))
-    # TODO 需要制作wait steps
-    if tb.is_first_head:
+    # 添加hasdep
+    if tb.is_recv and not is_last_pp:
+        for step in new_tb.findall('step'):
+            step.set("hasdep", "1")
+    # 需要制作wait steps
+    if tb.is_first_head and pp_index != 0:
         # 如果是head, 需要等待上一个stage的tail
         wait_steps = tail_steps.copy()
         for i in range(len(wait_steps)):
@@ -119,7 +125,7 @@ def get_new_pipeline_tb(tb: _tb, tb_index, tb_start_index, last_tb_start_index, 
                 deps += num_append_steps[depid]
             wait_steps[i] = (depid + last_tb_start_index, deps)
         new_tb = add_dep_steps(new_tb, wait_steps)
-    elif tb.is_recv:
+    elif tb.is_recv and pp_index != 0:
         # 如果是recv, 需要等待上一个stage的对应的recv
         tb_id = int(tb.xml_node.get('id'))
         deps = len(new_tb.findall('step')) - 1
@@ -174,13 +180,15 @@ def multi_pipeline(input_file, output_file, pipeline, ppfunc):
             tbs.append(tb)
         # 4. 复制stage
         tb_start_index = 0
-        tb_index = len(original_tbs)
+        tb_index = 0
         num_append_steps = how_many_steps_need_append(gpu)
-        for pp_index in range(1, pipeline):
+        del gpu[:]
+        for pp_index in range(pipeline):
             last_tb_start_index = tb_start_index
             tb_start_index = tb_index
+            is_last_pp = (pp_index == pipeline - 1)
             for tb in tbs:
-                new_tb_xml = get_new_pipeline_tb(tb, tb_index, tb_start_index, last_tb_start_index, o_chunks, pp_index, tail_steps, num_append_steps)
+                new_tb_xml = get_new_pipeline_tb(tb, tb_index, tb_start_index, last_tb_start_index, o_chunks, pp_index, is_last_pp, tail_steps, num_append_steps)
                 tb_index += 1
                 gpu.append(new_tb_xml)
     # 格式化, 2个空格缩进
