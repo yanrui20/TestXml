@@ -41,10 +41,16 @@ def get_new_pipeline_tb(tb: _tb, tb_index, tb_start_index, last_tb_start_index, 
         # 先递增原本的step_id
         for step in new_tb.findall('step'):
             current_s = int(step.get('s'))
-            step.set('s', str(current_s + len(wait_steps)))
+            step.set('s', str(current_s + len(wait_steps) - 1))
+            # 原本的第一个step需要添加最后一个wait step的依赖
+            if current_s == 0:
+                depid, deps = wait_steps[-1]
+                depid += last_tb_start_index
+                step.set('depid', str(depid))
+                step.set('deps', str(deps))
         # 插入新的wait step
         step_id = 0
-        for wait_step in wait_steps:
+        for wait_step in wait_steps[:-1]:
             depid, deps = wait_step
             depid += last_tb_start_index
             new_step = get_new_wait_step(step_id, depid, deps)
