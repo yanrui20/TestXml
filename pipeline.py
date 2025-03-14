@@ -176,8 +176,8 @@ if __name__ == '__main__':
         tail_func=is_first_tail_mesh_8_4,
     )
     input = "./Neogen_AG/32GPUs/ring8_4/fullmesh_2hosts_32nodes_8_4.txt.xml"
-    for pipeline in [2, 4]: # 1, 2, 4, 8, 16, 32
-        for instance in [1]: # 1, 2, 4, 8
+    for pipeline in [1, 2, 4, 8, 16, 32]:
+        for instance in [1, 2, 4, 8, 16]:
             output = f"./Neogen_AG/32GPUs_pipeline/mesh_8_4_pp_{pipeline}_ins_{instance}/test.xml"
             os.makedirs(os.path.dirname(output), exist_ok=True)
             multi_pipeline(input, output, pipeline, ppfunc)
