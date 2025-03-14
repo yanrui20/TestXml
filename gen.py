@@ -23,7 +23,7 @@ def get_new_tb(tb, tb_index, tb_start_index, chan, o_chunks):
             step.set("depid", str(depid + tb_start_index))
     return new_tb
 
-def modify_xml(input_file, output_file, instance):
+def multi_instance(input_file, output_file, instance):
     # 读取XML文件
     tree = ET.parse(input_file)
     root = tree.getroot()
@@ -70,7 +70,7 @@ if __name__ == '__main__':
                 output = output[0]
             else:
                 output = f"{output_dir}/modified.xml"
-            modify_xml(
+            multi_instance(
                 input_file=input, 
                 output_file=output, 
                 instance=ins,
