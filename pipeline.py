@@ -90,6 +90,8 @@ def how_many_steps_need_append(gpu):
 # 4. 复制stages
 def get_new_pipeline_tb(tb: _tb, tb_index, tb_start_index, last_tb_start_index, o_chunks, pp_index, is_last_pp, tail_steps, num_append_steps):
     new_tb = deepcopy(tb.xml_node)
+    # 修改chan
+    new_tb.set('chan', str(pp_index))
     # 修改id
     new_tb.set('id', str(tb_index))
     # 修改steps的offset属性
