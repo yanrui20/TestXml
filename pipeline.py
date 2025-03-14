@@ -59,12 +59,15 @@ def how_many_steps_need_append(gpu):
     num_append_steps = {}
     gpu_id = int(gpu.get('id'))
     tbs = []
-    tail_num = 0
+    tail_num = {}
     # 先储存一圈，然后找一下tail个数，tail会被下一个pp的head依赖
     for tb_xml in gpu.findall('tb'):
         tb = _tb(tb_xml, gpu_id, ppfunc)
         if tb.is_first_tail:
-            tail_num += 1
+            recv = int(tb_xml.get('recv'))
+            if recv not in tail_num:
+                tail_num[recv] = 0
+            tail_num[recv] += 1
         tbs.append(tb)
     # 计算每个pp增加的steps数量
     for tb in tbs:
@@ -72,7 +75,8 @@ def how_many_steps_need_append(gpu):
         # 首先每轮固定要生成原本那么多
         num_append_steps[tb_id] = len(tb.xml_node.findall('step'))
         if tb.is_first_head:
-            num_append_steps[tb_id] += tail_num
+            send = int(tb.xml_node.get('send'))
+            num_append_steps[tb_id] += tail_num[send]
             # 原本自身没有依赖，则会减少一个增加的step
             for step in tb.xml_node.findall('step'):
                 current_s = int(step.get('s'))
@@ -105,7 +109,10 @@ def get_new_pipeline_steps(tb: _tb, step_index, o_chunks, pp_index, num_append_s
             step.set("deps", str(deps))
     # 增加新的依赖steps
     if tb.is_first_head and pp_index != 0:
-        wait_steps = tail_steps.copy()
+        send = int(tb.xml_node.get('send'))
+        wait_steps = tail_steps[send].copy()
+        # 处理tails
+        # 处理num_append_steps
         for i in range(len(wait_steps)):
             depid, deps = wait_steps[i]
             # 这里依赖的是上一个pp，如果当前pp_index==1，则上一个stage（pp=0）的deps并没有变化
@@ -131,7 +138,7 @@ def multi_pipeline(input_file, output_file, pipeline, ppfunc):
         gpu_id = int(gpu.get('id'))
         original_tbs = gpu.findall('tb')
         tbs = []
-        tail_steps = []
+        tail_steps = {}
         for tb_xml in original_tbs:
             # 判断是否是第一个stage，以及是否是head和tail
             tb = _tb(tb_xml, gpu_id, ppfunc)
@@ -139,7 +146,8 @@ def multi_pipeline(input_file, output_file, pipeline, ppfunc):
             if tb.is_first_tail:
                 tb_id = int(tb.xml_node.get('id'))
                 last_step_id = len(tb.xml_node.findall('step')) - 1
-                tail_steps.append((tb_id, last_step_id))
+                recv = int(tb_xml.get('recv'))
+                tail_steps[recv] = [(tb_id, last_step_id)]
         # 4. 复制stage
         num_append_steps = how_many_steps_need_append(gpu)
         for tb_xml in original_tbs:
@@ -177,7 +185,7 @@ if __name__ == '__main__':
     )
     input = "./Neogen_AG/32GPUs/ring8_4/fullmesh_2hosts_32nodes_8_4.txt.xml"
     for pipeline in [1, 2, 4, 8, 16, 32]:
-        for instance in [1, 2, 4, 8, 16]:
+        for instance in [1, 2, 4, 8]:
             output = f"./Neogen_AG/32GPUs_pipeline/mesh_8_4_pp_{pipeline}_ins_{instance}/test.xml"
             os.makedirs(os.path.dirname(output), exist_ok=True)
             multi_pipeline(input, output, pipeline, ppfunc)
