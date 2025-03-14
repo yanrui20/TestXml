@@ -138,7 +138,7 @@ def multi_pipeline(input_file, output_file, pipeline, ppfunc):
             tbs.append(tb)
             if tb.is_first_tail:
                 tb_id = int(tb.xml_node.get('id'))
-                last_step_id = len(tb.xml_node.findall('step'))
+                last_step_id = len(tb.xml_node.findall('step')) - 1
                 tail_steps.append((tb_id, last_step_id))
         # 4. 复制stage
         num_append_steps = how_many_steps_need_append(gpu)
