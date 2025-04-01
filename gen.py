@@ -3,10 +3,10 @@ from copy import deepcopy
 import os
 from pathlib import Path
 
-def get_new_tb(tb, tb_index, tb_start_index, chan, o_chunks):
+def get_new_tb_copy(tb, tb_index, tb_start_index, chan, copy, o_chunks):
     new_tb = deepcopy(tb)
     # 修改chan
-    new_tb.set('chan', str(chan)) # 合并的这一份chan都是1
+    new_tb.set('chan', str(chan))
     # 修改id
     new_tb.set('id', str(tb_index))
     # 修改steps
@@ -16,34 +16,36 @@ def get_new_tb(tb, tb_index, tb_start_index, chan, o_chunks):
             srcbuf = step.get("srcbuf")
             if srcbuf == 'o':
                 value = int(step.get(attr))
-                step.set(attr, str(value + o_chunks * chan))
+                step.set(attr, str(value + o_chunks * copy))
         # 修改depid
         depid = int(step.get("depid"))
         if depid >= 0:
             step.set("depid", str(depid + tb_start_index))
     return new_tb
 
-def multi_instance(input_file, output_file, instance):
+
+def multi_copy(input_file, output_file, copy_num):
     # 读取XML文件
     tree = ET.parse(input_file)
     root = tree.getroot()
-    nchannels = int(root.get("nchannels"))
-    root.set("nchannels", str(nchannels * instance))
+    ori_nchannels = int(root.get("nchannels"))
+    root.set("nchannels", str(ori_nchannels * copy_num))
     nchunksperloop = int(root.get("nchunksperloop"))
-    root.set("nchunksperloop", str(nchunksperloop * instance))
+    root.set("nchunksperloop", str(nchunksperloop * copy_num))
 
     # 修改所有<gpu>标签的o_chunks属性为32
     for gpu in root.findall('.//gpu'):
         o_chunks = int(gpu.get('o_chunks'))
-        gpu.set('o_chunks', str(o_chunks*instance))
+        gpu.set('o_chunks', str(o_chunks*copy_num))
 
         # 复制并处理所有tb标签
         original_tbs = gpu.findall('tb')
         tb_index = len(original_tbs)
-        for chan in range(1, instance):
+        for copy in range(1, copy_num):
             tb_start_index = tb_index
             for tb in original_tbs:
-                new_tb = get_new_tb(tb, tb_index, tb_start_index, chan, o_chunks)
+                chan = int(tb.get('chan')) + copy * ori_nchannels
+                new_tb = get_new_tb_copy(tb, tb_index, tb_start_index, chan, copy, o_chunks)
                 tb_index += 1
                 # 添加到当前GPU节点
                 gpu.append(new_tb)
@@ -54,7 +56,7 @@ def multi_instance(input_file, output_file, instance):
 if __name__ == '__main__':
     gpus = 32
     INS = [2, 4, 8, 16]
-    xml_dir = f"/Users/yanrui/vscode/nccl/TestXml/Neogen_AG/{gpus}GPUs"
+    xml_dir = f"/Users/yanrui/vscode/nccl/TestXml_ring/Neogen_AG/{gpus}GPUs"
     neogen_dirs = []
     for entry in os.scandir(xml_dir):
         if entry.is_dir() and entry.name.startswith('ring') and "test" not in entry.name:
@@ -70,7 +72,7 @@ if __name__ == '__main__':
                 output = output[0]
             else:
                 output = f"{output_dir}/modified.xml"
-            multi_instance(
+            multi_copy(
                 input_file=input, 
                 output_file=output, 
                 instance=ins,
