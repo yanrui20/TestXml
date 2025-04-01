@@ -218,12 +218,12 @@ if __name__ == '__main__':
         head_func=is_first_head_ring_8_4,
         tail_func=is_first_tail_ring_8_4,
     )
-    input = "./Neogen_AG/16GPUs/ring8_2/fullmesh_1hosts_16nodes_8_2.xml"
-    for pipeline in [2, 4, 8, 16]:
+    input = "./Neogen_AG/32GPUs/ring8_4/fullmesh_2hosts_32nodes_8_4.txt.xml"
+    for pipeline in [1, 2, 4, 8, 16]:
         for ins in [1, 2, 4, 8]:
             if pipeline * ins > 64:
                 continue
-            output = f"./Neogen_AG/16GPUs_pipeline/ring_8_2_multi_chan_pp_{pipeline}_ins_{ins}/test.xml"
+            output = f"./Neogen_AG/32GPUs_pipeline/ring_8_4_multi_chan_pp_{pipeline}_ins_{ins}/test.xml"
             os.makedirs(os.path.dirname(output), exist_ok=True)
             multi_pipeline(input, output, pipeline, ppfunc)
             multi_copy(output, output, ins)
