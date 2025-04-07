@@ -220,7 +220,7 @@ if __name__ == '__main__':
     )
     input = "./Neogen_AG/16GPUs/ring8_2/fullmesh_1hosts_16nodes_8_2.xml"
     for pipeline in [1, 2, 4, 8, 16]:
-        for ins in [1, 2, 4, 8]:
+        for ins in [1, 2, 4, 8, 16]:
             if pipeline * ins > 64:
                 continue
             output = f"./Neogen_AG/16GPUs_pipeline/mesh_8_2_multi_chan_pp_{pipeline}_ins_{ins}/test.xml"
